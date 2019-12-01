@@ -12,9 +12,10 @@ use amethyst::{
         RenderingBundle, ImageFormat,sprite::SpriteSheetHandle,
         Texture,SpriteSheet,SpriteSheetFormat,Camera,ActiveCamera
     },
-    input::{InputBundle,InputHandler,StringBindings,VirtualKeyCode},
+    input::{InputBundle,InputHandler,StringBindings,VirtualKeyCode,InputEvent},
     tiles::{TileMap,Tile, RenderTiles2D,MortonEncoder},
     utils::application_root_dir,
+    ui::{UiTransform,Anchor,UiText,TtfFormat,UiBundle,RenderUi}
 };
 use std::collections::VecDeque;
 
@@ -37,10 +38,12 @@ fn main() -> amethyst::Result<()> {
                         .with_clear([0.34, 0.36, 0.52, 1.0]),
                 )
                 .with_plugin(RenderFlat2D::default())
-                .with_plugin(RenderTiles2D::<SnakeGameTile, MortonEncoder>::default()),
+                .with_plugin(RenderTiles2D::<SnakeGameTile, MortonEncoder>::default())
+                .with_plugin(RenderUi::default()),
         )?
         .with_bundle(InputBundle::<StringBindings>::new())?
         .with_bundle(TransformBundle::new())?
+        .with_bundle(UiBundle::<StringBindings>::new())?
         .with(DirectionChangeSystem{},"Direction Change",&[])
         .with(MoveSystem::default(),"Move system",&[]);
 
@@ -66,13 +69,98 @@ impl SimpleState for SnakeState {
             Some(tile_sprite_sheet),
         );
 
-        world.create_entity()
-            .with(map)
-            .with(Transform::default())
+        let font = world.read_resource::<Loader>().load(
+            "Poppins-Black.ttf",
+            TtfFormat,
+            (),
+            &world.read_resource(),
+        );
+
+        let big_text_transform = UiTransform::new(
+            "Instructions".to_string(),
+            Anchor::Middle,
+            Anchor::Middle,
+            0.,
+            60.,
+            1.,
+            2000.,
+            50.,
+        );
+        let big_text =world
+            .create_entity()
+            .with(big_text_transform)
+            .with(UiText::new(
+                font.clone(),
+                "Ready To Start".to_string(),
+                [1.0, 1.0, 1.0, 1.0],
+                50.,
+            ))
             .build();
 
+        let small_text_transform = UiTransform::new(
+            "Instructions".to_string(),
+            Anchor::Middle,
+            Anchor::Middle,
+            0.,
+            -40.,
+            1.,
+            2000.,
+            50.,
+        );
+        let small_text =world
+            .create_entity()
+            .with(small_text_transform)
+            .with(UiText::new(
+                font.clone(),
+                "Press Spacebar to Start".to_string(),
+                [1.0, 1.0, 1.0, 1.0],
+                30.,
+            ))
+            .build();
+
+
+        world.create_entity()
+            .with(map)
+            .with(Transform::from(Vector3::new(16.0,-16.0,0.0)))
+            .build();
+
+        world.insert(UiEntities{big_text,small_text});
         world.insert(Snake::default());
+        world.insert(GameState::default());
     }
+
+     fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+
+         let mut state = data.world.fetch_mut::<GameState>();
+         let ui_entities = data.world.fetch::<UiEntities>();
+         let mut ui_texts = data.world.write_storage::<UiText>();
+
+         match event{
+             StateEvent::Input(input_event) => {
+                match input_event{
+                    InputEvent::KeyPressed{key_code, ..} => {
+                        if (*state == GameState::WaitingToStart || *state == GameState::Paused ) && key_code == VirtualKeyCode::Space{
+                            *state = GameState::Playing;
+
+                            ui_texts.get_mut(ui_entities.small_text).unwrap().text = "".to_string();
+                            ui_texts.get_mut(ui_entities.big_text).unwrap().text = "".to_string();
+                        }
+                        else if *state == GameState::Playing  && key_code == VirtualKeyCode::P{
+                            *state = GameState::Paused;
+
+                            ui_texts.get_mut(ui_entities.small_text).unwrap().text = "Paused".to_string();
+                            ui_texts.get_mut(ui_entities.big_text).unwrap().text = "Press Spacebar to Resume".to_string();
+                        }
+                    }
+                    _ => {}
+                }
+             }
+             _ => {}
+         }
+
+         Trans::None
+
+     }
 }
 
 fn load_sprite_sheet(world: &mut World, png_path: &str, ron_path: &str) -> SpriteSheetHandle {
@@ -106,11 +194,30 @@ fn initialise_camera(world: &mut World) {
     (*act_cam).entity = Some(cam);
 }
 
+#[derive(PartialEq,Eq)]
 enum Direction{
     Up,
     Down,
     Left,
     Right
+}
+
+#[derive(PartialEq,Eq)]
+enum GameState{
+    WaitingToStart,
+    Playing,
+    Paused,
+    GameOver
+
+}
+
+impl Default for GameState {
+    fn default() -> Self { GameState::WaitingToStart }
+}
+
+struct UiEntities{
+    big_text : Entity,
+    small_text : Entity,
 }
 
 struct Snake{
@@ -168,31 +275,35 @@ impl<'s> System<'s> for DirectionChangeSystem {
     type SystemData = (
         WriteExpect<'s, Snake>,
         Read<'s, InputHandler<StringBindings>>,
+        Read<'s, GameState>,
     );
 
-    fn run(&mut self, (mut snake, input): Self::SystemData) {
-        if input.key_is_down(VirtualKeyCode::Up) {
-            let new_point = Point2::new(snake.snake.get(0).unwrap().x ,snake.snake.get(0).unwrap().y -1);
-            if new_point != *snake.snake.get(1).unwrap(){
-                snake.direction = Direction::Up;
+    fn run(&mut self, (mut snake, input,game_state): Self::SystemData) {
+
+        if *game_state == GameState::Playing {
+            if input.key_is_down(VirtualKeyCode::Up) {
+                let new_point = Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y - 1);
+                if new_point != *snake.snake.get(1).unwrap() {
+                    snake.direction = Direction::Up;
+                }
             }
-        }
-        if input.key_is_down(VirtualKeyCode::Down) {
-            let new_point = Point2::new(snake.snake.get(0).unwrap().x ,snake.snake.get(0).unwrap().y +1);
-            if new_point != *snake.snake.get(1).unwrap(){
-                snake.direction = Direction::Down;
+            if input.key_is_down(VirtualKeyCode::Down) {
+                let new_point = Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y + 1);
+                if new_point != *snake.snake.get(1).unwrap() {
+                    snake.direction = Direction::Down;
+                }
             }
-        }
-        if input.key_is_down(VirtualKeyCode::Left) {
-            let new_point = Point2::new(snake.snake.get(0).unwrap().x -1,snake.snake.get(0).unwrap().y);
-            if new_point != *snake.snake.get(1).unwrap(){
-                snake.direction = Direction::Left;
+            if input.key_is_down(VirtualKeyCode::Left) {
+                let new_point = Point2::new(snake.snake.get(0).unwrap().x - 1, snake.snake.get(0).unwrap().y);
+                if new_point != *snake.snake.get(1).unwrap() {
+                    snake.direction = Direction::Left;
+                }
             }
-        }
-        if input.key_is_down(VirtualKeyCode::Right) {
-            let new_point = Point2::new(snake.snake.get(0).unwrap().x +1,snake.snake.get(0).unwrap().y );
-            if new_point != *snake.snake.get(1).unwrap(){
-                snake.direction = Direction::Right;
+            if input.key_is_down(VirtualKeyCode::Right) {
+                let new_point = Point2::new(snake.snake.get(0).unwrap().x + 1, snake.snake.get(0).unwrap().y);
+                if new_point != *snake.snake.get(1).unwrap() {
+                    snake.direction = Direction::Right;
+                }
             }
         }
 
@@ -215,39 +326,38 @@ impl<'s> System<'s> for MoveSystem {
     type SystemData = (
         WriteExpect<'s, Snake>,
         Read<'s, Time>,
+        Read<'s, GameState>,
     );
 
-    fn run(&mut self, (mut snake, time): Self::SystemData) {
-        self.time_remainder_sec += time.delta_seconds();
+    fn run(&mut self, (mut snake, time,game_state): Self::SystemData) {
+        if *game_state == GameState::Playing {
+            self.time_remainder_sec += time.delta_seconds();
 
-        if self.time_remainder_sec > 0.05{
-            self.time_remainder_sec -= 0.05;
+            if self.time_remainder_sec > 0.05 {
+                self.time_remainder_sec -= 0.05;
 
-            //Move snake
-            let new_point = match snake.direction{
-                Direction::Up =>{
-                    Point2::new(snake.snake.get(0).unwrap().x ,snake.snake.get(0).unwrap().y -1)
+                //Move snake
+                let new_point = match snake.direction {
+                    Direction::Up => {
+                        Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y - 1)
+                    }
+                    Direction::Down => {
+                        Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y + 1)
+                    }
+                    Direction::Left => {
+                        Point2::new(snake.snake.get(0).unwrap().x - 1, snake.snake.get(0).unwrap().y)
+                    }
+                    Direction::Right => {
+                        Point2::new(snake.snake.get(0).unwrap().x + 1, snake.snake.get(0).unwrap().y)
+                    }
+                };
+
+                snake.snake.push_front(new_point);
+                if snake.points_to_add > 0 {
+                    snake.points_to_add -= 1;
+                } else {
+                    snake.snake.pop_back();
                 }
-                Direction::Down =>{
-                   Point2::new(snake.snake.get(0).unwrap().x ,snake.snake.get(0).unwrap().y +1)
-                }
-                Direction::Left =>{
-                    Point2::new(snake.snake.get(0).unwrap().x -1,snake.snake.get(0).unwrap().y )
-
-                }
-                Direction::Right =>{
-                    Point2::new(snake.snake.get(0).unwrap().x +1,snake.snake.get(0).unwrap().y )
-
-                }
-            };
-
-            snake.snake.push_front(new_point);
-            if snake.points_to_add >0 {
-                snake.points_to_add -=1;
-
-            }
-            else{
-                snake.snake.pop_back();
             }
         }
 
