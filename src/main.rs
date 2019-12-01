@@ -1,5 +1,6 @@
 use amethyst::{
     assets::{AssetStorage, Loader},
+    audio::{AudioBundle,output::Output,WavFormat,SourceHandle,Source},
     core::{
         transform::{TransformBundle,Transform},
         math::{Vector3 ,Point3,Point2},Time
@@ -17,8 +18,9 @@ use amethyst::{
     utils::application_root_dir,
     ui::{UiTransform,Anchor,UiText,TtfFormat,UiBundle,RenderUi}
 };
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashSet};
 use rand::{random, thread_rng, Rng};
+use std::ops::Deref;
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -44,6 +46,7 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(InputBundle::<StringBindings>::new())?
         .with_bundle(TransformBundle::new())?
         .with_bundle(UiBundle::<StringBindings>::new())?
+        .with_bundle(AudioBundle::default())?
         .with(DirectionChangeSystem{},"Direction Change",&[])
         .with(MoveSystem::default(),"Move system",&[]);
 
@@ -62,6 +65,7 @@ impl SimpleState for SnakeState {
         initialise_camera(world);
 
         let tile_sprite_sheet = load_sprite_sheet(world , "Tile.png","Tile.ron");
+        let eating_noise = load_source_source(world , "eating_noise.wav");
 
         let map = TileMap::<SnakeGameTile, MortonEncoder>::new(
             Vector3::new(40, 40, 2),
@@ -125,6 +129,7 @@ impl SimpleState for SnakeState {
             .build();
 
         world.insert(UiEntities{big_text,small_text});
+        world.insert(AudioHandles{eating_noise});
         world.insert(Snake::default());
         world.insert(GameState::default());
         world.insert(Food::new());
@@ -180,6 +185,12 @@ fn load_sprite_sheet(world: &mut World, png_path: &str, ron_path: &str) -> Sprit
     )
 }
 
+fn load_source_source(world: &mut World, src_path: &str) -> SourceHandle  {
+
+    let loader = world.read_resource::<Loader>();
+    loader.load(src_path, WavFormat, (), &world.read_resource())
+}
+
 fn initialise_camera(world: &mut World) {
     // Setup camera in a way that our screen covers whole arena and (0, 0) is in the bottom left.
     let mut transform = Transform::default();
@@ -221,6 +232,10 @@ struct UiEntities{
     small_text : Entity,
 }
 
+struct AudioHandles{
+    eating_noise : SourceHandle,
+}
+
 struct Snake{
     snake : VecDeque<Point2<u32>>,
     direction : Direction,
@@ -241,23 +256,36 @@ impl Default for Snake {
 }
 
 struct Food{
-    pellets: Vec<Point2<u32>>,
+    pellets: HashSet<Point2<u32>>,
 
 }
 
 impl Food{
     fn new() -> Self{
-        let pellets = vec![Point2::new(20,5)];
+        let mut pellets = HashSet::new();
+        pellets.insert( Point2::new(20,5));
+        pellets.insert( Point2::new(20,35));
+        pellets.insert( Point2::new(5,20));
+        pellets.insert( Point2::new(35,20));
         Food{pellets}
     }
 
     fn add_random_pellet(&mut self, snake: &Snake){
         let mut rand = thread_rng();
+
+        //Don't try to add in the screen is filled
+        if snake.snake.len() + self.pellets.len() == 40 * 40{
+            return;
+        }
+
         loop{
+
+
+
             let new_point = Point2::new(rand.gen_range(0,40),rand.gen_range(0,40));
 
             if !self.pellets.contains(&new_point) && !snake.snake.contains(&new_point) {
-                self.pellets.push(new_point);
+                self.pellets.insert(new_point);
                 break;
             }
         };
@@ -360,9 +388,12 @@ impl<'s> System<'s> for MoveSystem {
         Write<'s, GameState>,
         ReadExpect<'s, UiEntities>,
         WriteStorage<'s, UiText>,
+        Read<'s, AssetStorage<Source>>,
+        ReadExpect<'s, AudioHandles>,
+        Option<Read<'s, Output>>,
     );
 
-    fn run(&mut self, (mut snake, mut food, time, mut game_state, ui_entities, mut ui_texts): Self::SystemData) {
+    fn run(&mut self, (mut snake, mut food, time, mut game_state, ui_entities, mut ui_texts,sources,audio_handles,audio_output): Self::SystemData) {
         if *game_state == GameState::Playing {
             self.time_remainder_sec += time.delta_seconds();
 
@@ -395,14 +426,10 @@ impl<'s> System<'s> for MoveSystem {
                     ui_texts.get_mut(ui_entities.big_text).unwrap().text = "Game Over".to_string();
                 }
                 else{
-                    if food.pellets.contains(&new_point){
-                        //food.pellets.remove_item(&new_point);
-                        {
-                             let pos = food.pellets.iter().enumerate().find(|&(_,p)| p.x == new_point.x && p.y == new_point.y).map(|(loc,_)| loc).unwrap();
-                            food.pellets.remove(pos);
-                        }
+                    if food.pellets.remove(&new_point){
                         food.add_random_pellet(&snake);
                         snake.points_to_add += 1;
+                        play_eat_sound(&audio_handles,&sources,audio_output.as_ref().map(|o| o.deref()));
                     }
                     snake.snake.push_front(new_point);
                     if snake.points_to_add > 0 {
@@ -416,5 +443,13 @@ impl<'s> System<'s> for MoveSystem {
             }
         }
 
+    }
+}
+
+fn play_eat_sound(audio_handles: &AudioHandles, storage: &AssetStorage<Source>, output: Option<&Output>) {
+    if let Some(ref output) = output.as_ref() {
+        if let Some(sound) = storage.get(&audio_handles.eating_noise) {
+            output.play_once(sound, 1.0);
+        }
     }
 }
