@@ -18,7 +18,7 @@ use amethyst::{
     ui::{UiTransform,Anchor,UiText,TtfFormat,UiBundle,RenderUi}
 };
 use std::collections::VecDeque;
-
+use rand::{random, thread_rng, Rng};
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -127,6 +127,7 @@ impl SimpleState for SnakeState {
         world.insert(UiEntities{big_text,small_text});
         world.insert(Snake::default());
         world.insert(GameState::default());
+        world.insert(Food::new());
     }
 
      fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
@@ -234,11 +235,34 @@ impl Default for Snake {
         snake.push_back(Point2::new(20,21));
         snake.push_back(Point2::new(20,22));
         snake.push_back(Point2::new(20,23));
-        Snake{snake,direction: Direction::Up,points_to_add: 10}
+        Snake{snake,direction: Direction::Up,points_to_add: 0}
 
     }
 }
 
+struct Food{
+    pellets: Vec<Point2<u32>>,
+
+}
+
+impl Food{
+    fn new() -> Self{
+        let pellets = vec![Point2::new(20,5)];
+        Food{pellets}
+    }
+
+    fn add_random_pellet(&mut self, snake: &Snake){
+        let mut rand = thread_rng();
+        loop{
+            let new_point = Point2::new(rand.gen_range(0,40),rand.gen_range(0,40));
+
+            if !self.pellets.contains(&new_point) && !snake.snake.contains(&new_point) {
+                self.pellets.push(new_point);
+                break;
+            }
+        };
+    }
+}
 
 #[derive(Default, Clone)]
 struct SnakeGameTile;
@@ -263,7 +287,13 @@ impl Tile for SnakeGameTile {
 
             }
             else{
-                None
+                let food =  world.fetch::<Food>();
+                if food.pellets.contains(&Point2::new(point.x,point.y)) {
+                    Some(3)
+                }
+                else{
+                    None
+                }
             }
         }
     }
@@ -325,11 +355,14 @@ impl Default for MoveSystem {
 impl<'s> System<'s> for MoveSystem {
     type SystemData = (
         WriteExpect<'s, Snake>,
+        WriteExpect<'s, Food>,
         Read<'s, Time>,
-        Read<'s, GameState>,
+        Write<'s, GameState>,
+        ReadExpect<'s, UiEntities>,
+        WriteStorage<'s, UiText>,
     );
 
-    fn run(&mut self, (mut snake, time,game_state): Self::SystemData) {
+    fn run(&mut self, (mut snake, mut food, time, mut game_state, ui_entities, mut ui_texts): Self::SystemData) {
         if *game_state == GameState::Playing {
             self.time_remainder_sec += time.delta_seconds();
 
@@ -339,25 +372,47 @@ impl<'s> System<'s> for MoveSystem {
                 //Move snake
                 let new_point = match snake.direction {
                     Direction::Up => {
-                        Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y - 1)
+                        Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y.overflowing_sub(1).0)
                     }
                     Direction::Down => {
                         Point2::new(snake.snake.get(0).unwrap().x, snake.snake.get(0).unwrap().y + 1)
                     }
                     Direction::Left => {
-                        Point2::new(snake.snake.get(0).unwrap().x - 1, snake.snake.get(0).unwrap().y)
+                        Point2::new(snake.snake.get(0).unwrap().x.overflowing_sub(1).0, snake.snake.get(0).unwrap().y)
                     }
                     Direction::Right => {
                         Point2::new(snake.snake.get(0).unwrap().x + 1, snake.snake.get(0).unwrap().y)
                     }
                 };
-
-                snake.snake.push_front(new_point);
-                if snake.points_to_add > 0 {
-                    snake.points_to_add -= 1;
-                } else {
-                    snake.snake.pop_back();
+                if new_point.x >= 40 ||  new_point.y >= 40 {
+                    *game_state = GameState::GameOver;
+                    ui_texts.get_mut(ui_entities.small_text).unwrap().text = "You hit the edge".to_string();
+                    ui_texts.get_mut(ui_entities.big_text).unwrap().text = "Game Over".to_string();
                 }
+                else if snake.snake.contains(&new_point) {
+                    *game_state = GameState::GameOver;
+                    ui_texts.get_mut(ui_entities.small_text).unwrap().text = "You hit yourself".to_string();
+                    ui_texts.get_mut(ui_entities.big_text).unwrap().text = "Game Over".to_string();
+                }
+                else{
+                    if food.pellets.contains(&new_point){
+                        //food.pellets.remove_item(&new_point);
+                        {
+                             let pos = food.pellets.iter().enumerate().find(|&(_,p)| p.x == new_point.x && p.y == new_point.y).map(|(loc,_)| loc).unwrap();
+                            food.pellets.remove(pos);
+                        }
+                        food.add_random_pellet(&snake);
+                        snake.points_to_add += 1;
+                    }
+                    snake.snake.push_front(new_point);
+                    if snake.points_to_add > 0 {
+                        snake.points_to_add -= 1;
+                    } else {
+                        snake.snake.pop_back();
+                    }
+                }
+
+
             }
         }
 
