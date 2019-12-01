@@ -1,0 +1,4 @@
+(
+  title: "SuperSnake",
+  dimensions: Some((1280, 1280)),
+)
