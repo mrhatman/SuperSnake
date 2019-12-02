@@ -288,7 +288,7 @@ impl Food {
         let mut rand = thread_rng();
 
         //Don't try to add in the screen is filled
-        if snake.snake.len() + self.pellets.len() == (GRID_SIZE * GRID_SIZE) as usize {
+        if snake.snake.len() + self.pellets.len() == GRID_SIZE * GRID_SIZE {
             return;
         }
 
