@@ -96,10 +96,15 @@ impl<'s> System<'s> for MoveSystem {
                         );
                     }
                     snake.snake.push_front(new_point);
+                    let direction = snake.direction.clone();
+                    snake.directions.push_front(direction);
+
+
                     if snake.points_to_add > 0 {
                         snake.points_to_add -= 1;
                     } else {
                         snake.snake.pop_back();
+                        snake.directions.pop_back();
                     }
                 }
             }

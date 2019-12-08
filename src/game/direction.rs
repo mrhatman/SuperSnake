@@ -6,7 +6,7 @@ use amethyst::{
     input::{InputHandler, StringBindings, VirtualKeyCode},
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq,Clone)]
 pub enum Direction {
     Up,
     Down,
