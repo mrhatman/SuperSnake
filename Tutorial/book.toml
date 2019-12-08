@@ -1,0 +1,6 @@
+[book]
+authors = ["mrhatman"]
+language = "en"
+multilingual = false
+src = "src"
+title = "SuperSnake Tutorial"
