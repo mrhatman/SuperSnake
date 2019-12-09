@@ -158,6 +158,44 @@
 <li>The map has food scattered randomly.</li>
 <li>If the snake hits the food, it grows longer and a new food is randomly placed. </li>
 </ul>
+<p>The core game code can be found <a href="https://github.com/mrhatman/SuperSnake/tree/Core-Game">here</a>!</p>
+<h2><a class="header" href="#basics-of-implementation" id="basics-of-implementation">Basics of Implementation</a></h2>
+<h3><a class="header" href="#audio" id="audio">Audio</a></h3>
+<p>The audio system is almost identical to the Pong example.</p>
+<h3><a class="header" href="#direction--directionchangesystem" id="direction--directionchangesystem">Direction &amp; DirectionChangeSystem</a></h3>
+<p>This enum stores the 4 directions the snake can be moving.</p>
+<p>This system changes the current direction of the snake based on direction keys</p>
+<pre><code>input.key_is_down(VirtualKeyCode::Up) 
+</code></pre>
+<p>unless the direction is opposite of the previous movement direction.</p>
+<h3><a class="header" href="#food" id="food">Food</a></h3>
+<p>This struct contains a set of the food pellets. A HashSet is used for performance reasons.</p>
+<p>Whenever the snakes head moves, we can use the .contains() function of the set to determine if
+the set contains that point. The helper function add_random_pellet() can be used to insert new food unless food already 
+exists there or it's part of the snake.</p>
+<h3><a class="header" href="#movesystem" id="movesystem">MoveSystem</a></h3>
+<p>This system uses the Time Resource so it only moves the system each MOVEMENT_PERIOD.</p>
+<p>The system pushes to the front a new snake head in the direction in the direction of snake.direction. If the snake would
+go off the map or intersect with itself, transition the GameState to GameOver. If the snakes head intersects with a 
+food pellet, remove the food pellet and add a random one. 
+Unless the snake ate a pellet, pop the tail of the snake off, moving it along.</p>
+<h3><a class="header" href="#snake" id="snake">Snake</a></h3>
+<p>The Snake struct contains the current direction of travel, a queue of past directions, and a queue of past points.</p>
+<h3><a class="header" href="#tile" id="tile">Tile</a></h3>
+<p>This trait implementation defines of to draw the tile map. 
+Layer 0 is the background so it's a constant grid. Layer 1 contains the snake and food. The snake's
+direction queue is used to determine what part to draw. </p>
+<h3><a class="header" href="#ui" id="ui">UI</a></h3>
+<p>Contains the Entities for the Big and Little Test that come up on the screen.</p>
+<h3><a class="header" href="#primary-state" id="primary-state">Primary State</a></h3>
+<p>The primary game state. It loads the files, handles the game state, and takes some basic inputs.</p>
+<p>The GameState is the base state of the game.</p>
+<ul>
+<li>Waiting to start: Waiting to start the game. Transitions to Playing when the Spacebar is pressed.</li>
+<li>Playing: Playing the game. The direction system and movement system only run in this state.</li>
+<li>Paused: Pressing P pauses the game and spacebar resumes.</li>
+<li>GameOver: Game is over. Transitions in the movement state.</li>
+</ul>
 
                     </main>
 
