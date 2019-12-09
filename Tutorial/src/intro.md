@@ -8,6 +8,7 @@ game. I will be covering things like,
 *   Handling Settings
 *   Saving a game to a file
 *   Difficulty Levels
+*   Language Localization
 
 To this end, I have made a simple snake game and the first chapter will briefly discuss the workings of the game. Which 
 takes us to the next section.
