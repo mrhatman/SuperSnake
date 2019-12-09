@@ -7,7 +7,6 @@ pub struct Snake {
     pub snake: VecDeque<Point2<u32>>,
     pub directions: VecDeque<Direction>,
     pub direction: Direction,
-    pub points_to_add: u32,
 }
 
 impl Default for Snake {
@@ -27,7 +26,6 @@ impl Default for Snake {
             snake,
             directions,
             direction: Direction::Up,
-            points_to_add: 0,
         }
     }
 }
