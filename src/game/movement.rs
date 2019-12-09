@@ -51,10 +51,11 @@ impl<'s> System<'s> for MoveSystem {
         ): Self::SystemData,
     ) {
         if *game_state == GameState::Playing {
+            let mut points_to_add =0;
             self.time_remainder_sec += time.delta_seconds();
 
-            if self.time_remainder_sec > 0.05 {
-                self.time_remainder_sec -= 0.05;
+            if self.time_remainder_sec > MOVEMENT_PERIOD {
+                self.time_remainder_sec -= MOVEMENT_PERIOD;
 
                 //Move snake
                 let new_point = match snake.direction {
@@ -88,7 +89,7 @@ impl<'s> System<'s> for MoveSystem {
                 } else {
                     if food.pellets.remove(&new_point) {
                         food.add_random_pellet(&snake);
-                        snake.points_to_add += 1;
+                        points_to_add += 1;
                         play_eat_sound(
                             &audio_handles,
                             &sources,
@@ -100,9 +101,7 @@ impl<'s> System<'s> for MoveSystem {
                     snake.directions.push_front(direction);
 
 
-                    if snake.points_to_add > 0 {
-                        snake.points_to_add -= 1;
-                    } else {
+                    if points_to_add == 0 {
                         snake.snake.pop_back();
                         snake.directions.pop_back();
                     }
