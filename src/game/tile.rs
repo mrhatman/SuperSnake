@@ -41,7 +41,7 @@ impl Tile for SnakeGameTile {
                     }
                 }
                 else{
-                    match ( snake.directions.get(p-1) ,snake.directions.get(p)){
+                    match ( snake.directions.get(p.wrapping_sub(1)) ,snake.directions.get(p)){
                         (Some(Direction::Down),Some(Direction::Down)) | (Some(Direction::Up),Some(Direction::Up)) =>{
                             Some(3)
                         }
