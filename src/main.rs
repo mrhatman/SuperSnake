@@ -14,7 +14,7 @@ use amethyst::{
 };
 
 use crate::game::{DirectionChangeSystem, MoveSystem, SnakeGameTile};
-use crate::states::PrimaryState;
+use crate::states::{PrimaryState, SplashState};
 
 mod game;
 mod states;
@@ -34,7 +34,7 @@ fn main() -> amethyst::Result<()> {
             RenderingBundle::<DefaultBackend>::new()
                 .with_plugin(
                     RenderToWindow::from_config_path(display_config_path)?
-                        .with_clear([0.34, 0.36, 0.52, 1.0]),
+                        .with_clear([0.0, 0.0, 0.0, 1.0]),
                 )
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(RenderTiles2D::<SnakeGameTile, MortonEncoder>::default())
@@ -43,11 +43,11 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(InputBundle::<StringBindings>::new())?
         .with_bundle(TransformBundle::new())?
         .with_bundle(UiBundle::<StringBindings>::new())?
-        .with_bundle(AudioBundle::default())?
-        .with(DirectionChangeSystem {}, "Direction Change", &[])
-        .with(MoveSystem::default(), "Move system", &[]);
+        .with_bundle(AudioBundle::default())?;
+        //.with(DirectionChangeSystem {}, "Direction Change", &[])
+        //.with(MoveSystem::default(), "Move system", &[]);
 
-    let mut game = Application::new(resources_dir, PrimaryState, game_data)?;
+    let mut game = Application::new(resources_dir, SplashState::new(), game_data)?;
     game.run();
 
     Ok(())
