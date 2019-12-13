@@ -44,9 +44,7 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(TransformBundle::new())?
         .with_bundle(UiBundle::<StringBindings>::new())?
         .with_bundle(AudioBundle::default())?;
-        //.with(DirectionChangeSystem {}, "Direction Change", &[])
-        //.with(MoveSystem::default(), "Move system", &[]);
-
+    
     let mut game = Application::new(resources_dir, SplashState::new(), game_data)?;
     game.run();
 

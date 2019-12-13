@@ -2,7 +2,6 @@ use crate::game::Direction;
 use amethyst::core::math::Point2;
 use std::collections::VecDeque;
 
-
 pub struct Snake {
     pub snake: VecDeque<Point2<u32>>,
     pub directions: VecDeque<Direction>,

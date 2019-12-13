@@ -1,4 +1,4 @@
-use crate::states::MainMenuState;
+use crate::states::PrimaryState;
 use amethyst::{
     assets::Loader,
     core::{ecs::prelude::*, Time},
@@ -6,21 +6,21 @@ use amethyst::{
     ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEventType, UiText, UiTransform},
 };
 
-pub struct CreditsState {
+pub struct LoadingState {
     text_entity: Option<Entity>,
     exit_button_entity: Option<UiButton>,
 }
 
-impl CreditsState {
+impl LoadingState {
     pub fn new() -> Self {
-        CreditsState {
+        LoadingState {
             text_entity: None,
             exit_button_entity: None,
         }
     }
 }
 
-impl SimpleState for CreditsState {
+impl SimpleState for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
@@ -33,7 +33,7 @@ impl SimpleState for CreditsState {
         );
 
         let big_text_transform = UiTransform::new(
-            "credits".to_string(),
+            "loading".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -48,7 +48,7 @@ impl SimpleState for CreditsState {
                 .with(big_text_transform)
                 .with(UiText::new(
                     font.clone(),
-                    "Credits State".to_string(),
+                    "Loading State".to_string(),
                     [1.0, 1.0, 1.0, 1.0],
                     50.,
                 ))
@@ -56,7 +56,7 @@ impl SimpleState for CreditsState {
         );
 
         self.exit_button_entity = Some(
-            UiButtonBuilder::<(), u32>::new("Exit")
+            UiButtonBuilder::<(), u32>::new("Play")
                 .with_size(200.0, 36.0)
                 .with_anchor(Anchor::Middle)
                 .with_font(font.clone())
@@ -69,12 +69,13 @@ impl SimpleState for CreditsState {
                 .1,
         );
     }
+
     fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Ui(ui_event) => {
                 if ui_event.event_type == UiEventType::ClickStart {
                     if ui_event.target == self.exit_button_entity.as_ref().unwrap().image_entity {
-                        return Trans::Switch(Box::new(MainMenuState::new()));
+                        return Trans::Switch(Box::new(PrimaryState::new()));
                     }
                 }
             }
@@ -83,7 +84,6 @@ impl SimpleState for CreditsState {
 
         Trans::None
     }
-
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
         data.world.delete_entity(self.text_entity.unwrap());

@@ -13,11 +13,29 @@ use amethyst::{
     ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
-use crate::game::{defines::*, AudioHandles, Food, Snake, SnakeGameTile, UiEntities};
+use crate::game::{
+    defines::*, AudioHandles, DirectionChangeSystem, Food, MoveSystem, Snake, SnakeGameTile,
+    UiEntities,
+};
+use crate::states::{GameOverState, PausedState};
 
-pub struct PrimaryState;
+use std::ops::Deref;
 
-impl SimpleState for PrimaryState {
+pub struct PrimaryState<'a, 'b> {
+    dispatcher: Option<Dispatcher<'a, 'b>>,
+    map_entity: Option<Entity>,
+}
+
+impl<'a, 'b> PrimaryState<'a, 'b> {
+    pub fn new() -> Self {
+        PrimaryState {
+            dispatcher: None,
+            map_entity: None,
+        }
+    }
+}
+
+impl<'a, 'b> SimpleState for PrimaryState<'a, 'b> {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
         initialise_camera(world);
@@ -31,97 +49,38 @@ impl SimpleState for PrimaryState {
             Some(tile_sprite_sheet),
         );
 
-        let font = world.read_resource::<Loader>().load(
-            "Poppins-Black.ttf",
-            TtfFormat,
-            (),
-            &world.read_resource(),
+        self.map_entity = Some(
+            world
+                .create_entity()
+                .with(map)
+                .with(Transform::from(Vector3::new(
+                    TILE_SIZE as f32 / 2.0,
+                    TILE_SIZE as f32 / -2.0,
+                    0.0,
+                )))
+                .build(),
         );
 
-        let big_text_transform = UiTransform::new(
-            "Instructions".to_string(),
-            Anchor::Middle,
-            Anchor::Middle,
-            0.,
-            60.,
-            1.,
-            2000.,
-            50.,
-        );
-        let big_text = world
-            .create_entity()
-            .with(big_text_transform)
-            .with(UiText::new(
-                font.clone(),
-                "Ready To Start".to_string(),
-                [1.0, 1.0, 1.0, 1.0],
-                50.,
-            ))
-            .build();
-
-        let small_text_transform = UiTransform::new(
-            "Instructions".to_string(),
-            Anchor::Middle,
-            Anchor::Middle,
-            0.,
-            -40.,
-            1.,
-            2000.,
-            50.,
-        );
-        let small_text = world
-            .create_entity()
-            .with(small_text_transform)
-            .with(UiText::new(
-                font.clone(),
-                "Press Spacebar to Start".to_string(),
-                [1.0, 1.0, 1.0, 1.0],
-                30.,
-            ))
-            .build();
-
-        world
-            .create_entity()
-            .with(map)
-            .with(Transform::from(Vector3::new(
-                TILE_SIZE as f32 / 2.0,
-                TILE_SIZE as f32 / -2.0,
-                0.0,
-            )))
-            .build();
-
-        world.insert(UiEntities {
-            big_text,
-            small_text,
-        });
         world.insert(AudioHandles { eating_noise });
         world.insert(Snake::default());
         world.insert(GameState::default());
         world.insert(Food::new());
+
+        let mut dispatcher_builder = DispatcherBuilder::new();
+        dispatcher_builder.add(DirectionChangeSystem {}, "direction change", &[]);
+        dispatcher_builder.add(MoveSystem::default(), "move system", &[]);
+        let mut dispatcher = dispatcher_builder.build();
+        dispatcher.setup(world);
+
+        self.dispatcher = Some(dispatcher);
     }
 
     fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
-        let mut state = data.world.fetch_mut::<GameState>();
-        let ui_entities = data.world.fetch::<UiEntities>();
-        let mut ui_texts = data.world.write_storage::<UiText>();
-
         match event {
             StateEvent::Input(input_event) => match input_event {
                 InputEvent::KeyPressed { key_code, .. } => {
-                    if (*state == GameState::WaitingToStart || *state == GameState::Paused)
-                        && key_code == VirtualKeyCode::Space
-                    {
-                        *state = GameState::Playing;
-
-                        ui_texts.get_mut(ui_entities.small_text).unwrap().text = "".to_string();
-                        ui_texts.get_mut(ui_entities.big_text).unwrap().text = "".to_string();
-                    } else if *state == GameState::Playing && key_code == VirtualKeyCode::P {
-                        *state = GameState::Paused;
-
-                        ui_texts.get_mut(ui_entities.small_text).unwrap().text =
-                            "Paused".to_string();
-                        ui_texts.get_mut(ui_entities.big_text).unwrap().text =
-                            "Press Spacebar to Resume".to_string();
+                    if key_code == VirtualKeyCode::P {
+                        return Trans::Push(Box::new(PausedState::new()));
                     }
                 }
                 _ => {}
@@ -130,6 +89,32 @@ impl SimpleState for PrimaryState {
         }
 
         Trans::None
+    }
+
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        if let Some(dispatcher) = self.dispatcher.as_mut() {
+            dispatcher.dispatch(&data.world);
+        }
+
+        let mut state = data.world.fetch::<GameState>();
+        match state.deref() {
+            GameState::Playing => Trans::None,
+            GameState::HitWall => {
+                Trans::Switch(Box::new(GameOverState::new("You hit the wall".to_string())))
+            }
+            GameState::HitYourself => {
+                Trans::Switch(Box::new(GameOverState::new("You hit yourself".to_string())))
+            }
+        }
+    }
+
+    fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        //Delete the text entity
+        data.world
+            .delete_entity(self.map_entity.unwrap())
+            .expect("Failed to Delete Map");
+
+        println!("End Primary State")
     }
 }
 
@@ -174,14 +159,13 @@ fn initialise_camera(world: &mut World) {
 
 #[derive(PartialEq, Eq)]
 pub enum GameState {
-    WaitingToStart,
     Playing,
-    Paused,
-    GameOver,
+    HitYourself,
+    HitWall,
 }
 
 impl Default for GameState {
     fn default() -> Self {
-        GameState::WaitingToStart
+        GameState::Playing
     }
 }
