@@ -1,9 +1,9 @@
 use crate::states::{CreditsState, LoadState, LoadingState, SettingsState};
 use amethyst::{
     assets::Loader,
-    core::{ecs::prelude::*, Time},
+    core::ecs::prelude::*,
     prelude::*,
-    ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEvent, UiEventType, UiText, UiTransform},
+    ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEventType, UiText, UiTransform},
 };
 
 pub struct MainMenuState {
@@ -38,8 +38,8 @@ impl SimpleState for MainMenuState {
             &world.read_resource(),
         );
 
-        let big_text_transform = UiTransform::new(
-            "Amethyst Text".to_string(),
+        let text_transform = UiTransform::new(
+            "Title Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -51,7 +51,7 @@ impl SimpleState for MainMenuState {
         self.text_entity = Some(
             world
                 .create_entity()
-                .with(big_text_transform)
+                .with(text_transform)
                 .with(UiText::new(
                     font.clone(),
                     "Super Snake".to_string(),
@@ -118,7 +118,7 @@ impl SimpleState for MainMenuState {
         );
     }
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+    fn handle_event(&mut self, _data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Ui(ui_event) => {
                 if ui_event.event_type == UiEventType::ClickStart {
@@ -146,22 +146,32 @@ impl SimpleState for MainMenuState {
 
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
-        data.world.delete_entity(self.text_entity.unwrap());
         data.world
-            .delete_entity(self.play_button_entity.as_ref().unwrap().image_entity);
+            .delete_entity(self.text_entity.unwrap())
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.play_button_entity.as_ref().unwrap().text_entity);
+            .delete_entity(self.play_button_entity.as_ref().unwrap().image_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.load_button_entity.as_ref().unwrap().image_entity);
+            .delete_entity(self.play_button_entity.as_ref().unwrap().text_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.load_button_entity.as_ref().unwrap().text_entity);
+            .delete_entity(self.load_button_entity.as_ref().unwrap().image_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.credits_button_entity.as_ref().unwrap().image_entity);
+            .delete_entity(self.load_button_entity.as_ref().unwrap().text_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.credits_button_entity.as_ref().unwrap().text_entity);
+            .delete_entity(self.credits_button_entity.as_ref().unwrap().image_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.settings_button_entity.as_ref().unwrap().image_entity);
+            .delete_entity(self.credits_button_entity.as_ref().unwrap().text_entity)
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.settings_button_entity.as_ref().unwrap().text_entity);
+            .delete_entity(self.settings_button_entity.as_ref().unwrap().image_entity)
+            .expect("Failed to Delete Entity");
+        data.world
+            .delete_entity(self.settings_button_entity.as_ref().unwrap().text_entity)
+            .expect("Failed to Delete Entity");
     }
 }

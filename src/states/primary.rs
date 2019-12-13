@@ -10,12 +10,10 @@ use amethyst::{
         SpriteSheetFormat, Texture,
     },
     tiles::{MortonEncoder, TileMap},
-    ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
 use crate::game::{
     defines::*, AudioHandles, DirectionChangeSystem, Food, MoveSystem, Snake, SnakeGameTile,
-    UiEntities,
 };
 use crate::states::{GameOverState, PausedState};
 
@@ -75,7 +73,7 @@ impl<'a, 'b> SimpleState for PrimaryState<'a, 'b> {
         self.dispatcher = Some(dispatcher);
     }
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+    fn handle_event(&mut self, _data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Input(input_event) => match input_event {
                 InputEvent::KeyPressed { key_code, .. } => {
@@ -96,7 +94,7 @@ impl<'a, 'b> SimpleState for PrimaryState<'a, 'b> {
             dispatcher.dispatch(&data.world);
         }
 
-        let mut state = data.world.fetch::<GameState>();
+        let state = data.world.fetch::<GameState>();
         match state.deref() {
             GameState::Playing => Trans::None,
             GameState::HitWall => {

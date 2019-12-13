@@ -1,10 +1,9 @@
-use crate::states::MainMenuState;
 use amethyst::{
     assets::Loader,
-    core::{ecs::prelude::*, Time},
+    core::ecs::prelude::*,
     input::{InputEvent, VirtualKeyCode},
     prelude::*,
-    ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEventType, UiText, UiTransform},
+    ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
 pub struct PausedState {
@@ -34,7 +33,7 @@ impl SimpleState for PausedState {
         );
 
         let big_text_transform = UiTransform::new(
-            "Instructions".to_string(),
+            "Big Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -57,7 +56,7 @@ impl SimpleState for PausedState {
         );
 
         let small_text_transform = UiTransform::new(
-            "Instructions".to_string(),
+            "Small Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -80,7 +79,7 @@ impl SimpleState for PausedState {
         );
     }
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+    fn handle_event(&mut self, _data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Input(input_event) => match input_event {
                 InputEvent::KeyPressed { key_code, .. } => {
@@ -97,7 +96,11 @@ impl SimpleState for PausedState {
     }
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
-        data.world.delete_entity(self.big_text_entity.unwrap());
-        data.world.delete_entity(self.small_text_entity.unwrap());
+        data.world
+            .delete_entity(self.big_text_entity.unwrap())
+            .expect("Failed to Delete Entity");
+        data.world
+            .delete_entity(self.small_text_entity.unwrap())
+            .expect("Failed to Delete Entity");
     }
 }

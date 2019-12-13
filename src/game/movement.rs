@@ -3,10 +3,9 @@ use amethyst::{
     audio::{output::Output, Source},
     core::{math::Point2, Time},
     ecs::prelude::*,
-    ui::UiText,
 };
 
-use crate::game::{defines::*, play_eat_sound, AudioHandles, Direction, Food, Snake, UiEntities};
+use crate::game::{defines::*, play_eat_sound, AudioHandles, Direction, Food, Snake};
 use crate::states::GameState;
 
 use std::ops::Deref;

@@ -13,8 +13,8 @@ use amethyst::{
     utils::application_root_dir,
 };
 
-use crate::game::{DirectionChangeSystem, MoveSystem, SnakeGameTile};
-use crate::states::{PrimaryState, SplashState};
+use crate::game::SnakeGameTile;
+use crate::states::SplashState;
 
 mod game;
 mod states;
@@ -44,7 +44,7 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(TransformBundle::new())?
         .with_bundle(UiBundle::<StringBindings>::new())?
         .with_bundle(AudioBundle::default())?;
-    
+
     let mut game = Application::new(resources_dir, SplashState::new(), game_data)?;
     game.run();
 

@@ -33,7 +33,7 @@ impl SimpleState for SplashState {
             &world.read_resource(),
         );
 
-        let big_text_transform = UiTransform::new(
+        let text_transform = UiTransform::new(
             "Amethyst Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
@@ -46,7 +46,7 @@ impl SimpleState for SplashState {
         self.text_entity = Some(
             world
                 .create_entity()
-                .with(big_text_transform)
+                .with(text_transform)
                 .with(UiText::new(
                     font.clone(),
                     "Powered by Amethyst".to_string(),
@@ -77,6 +77,8 @@ impl SimpleState for SplashState {
 
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
-        data.world.delete_entity(self.text_entity.unwrap());
+        data.world
+            .delete_entity(self.text_entity.unwrap())
+            .expect("Failed to Delete Entity");
     }
 }

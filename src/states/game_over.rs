@@ -1,10 +1,10 @@
 use crate::states::MainMenuState;
 use amethyst::{
     assets::Loader,
-    core::{ecs::prelude::*, Time},
-    input::{InputEvent, VirtualKeyCode},
+    core::ecs::prelude::*,
+    input::InputEvent,
     prelude::*,
-    ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEventType, UiText, UiTransform},
+    ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
 pub struct GameOverState {
@@ -36,7 +36,7 @@ impl SimpleState for GameOverState {
         );
 
         let big_text_transform = UiTransform::new(
-            "Instructions".to_string(),
+            "Big Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -59,7 +59,7 @@ impl SimpleState for GameOverState {
         );
 
         let small_text_transform = UiTransform::new(
-            "Instructions".to_string(),
+            "Small Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -74,7 +74,7 @@ impl SimpleState for GameOverState {
                 .with(small_text_transform)
                 .with(UiText::new(
                     font.clone(),
-                    self.reason_text.clone() + "\n Press Any Key to Continue",
+                    self.reason_text.clone() + " - Press Any Key to Continue",
                     [1.0, 1.0, 1.0, 1.0],
                     30.,
                 ))
@@ -82,10 +82,10 @@ impl SimpleState for GameOverState {
         );
     }
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+    fn handle_event(&mut self, _data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Input(input_event) => match input_event {
-                InputEvent::KeyPressed { key_code, .. } => {
+                InputEvent::KeyPressed { .. } => {
                     return Trans::Switch(Box::new(MainMenuState::new()));
                 }
                 _ => {}
@@ -97,7 +97,11 @@ impl SimpleState for GameOverState {
     }
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
-        data.world.delete_entity(self.big_text_entity.unwrap());
-        data.world.delete_entity(self.small_text_entity.unwrap());
+        data.world
+            .delete_entity(self.big_text_entity.unwrap())
+            .expect("Failed to Delete Entity");
+        data.world
+            .delete_entity(self.small_text_entity.unwrap())
+            .expect("Failed to Delete Entity");
     }
 }

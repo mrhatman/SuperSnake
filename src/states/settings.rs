@@ -1,7 +1,7 @@
 use crate::states::MainMenuState;
 use amethyst::{
     assets::Loader,
-    core::{ecs::prelude::*, Time},
+    core::ecs::prelude::*,
     prelude::*,
     ui::{Anchor, TtfFormat, UiButton, UiButtonBuilder, UiEventType, UiText, UiTransform},
 };
@@ -32,8 +32,8 @@ impl SimpleState for SettingsState {
             &world.read_resource(),
         );
 
-        let big_text_transform = UiTransform::new(
-            "s".to_string(),
+        let text_transform = UiTransform::new(
+            "Settings Text".to_string(),
             Anchor::Middle,
             Anchor::Middle,
             0.,
@@ -45,7 +45,7 @@ impl SimpleState for SettingsState {
         self.text_entity = Some(
             world
                 .create_entity()
-                .with(big_text_transform)
+                .with(text_transform)
                 .with(UiText::new(
                     font.clone(),
                     "Settings State".to_string(),
@@ -70,7 +70,7 @@ impl SimpleState for SettingsState {
         );
     }
 
-    fn handle_event(&mut self, data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
+    fn handle_event(&mut self, _data: StateData<GameData>, event: StateEvent) -> SimpleTrans {
         match event {
             StateEvent::Ui(ui_event) => {
                 if ui_event.event_type == UiEventType::ClickStart {
@@ -86,10 +86,14 @@ impl SimpleState for SettingsState {
     }
     fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         //Delete the text entity
-        data.world.delete_entity(self.text_entity.unwrap());
         data.world
-            .delete_entity(self.exit_button_entity.as_ref().unwrap().text_entity);
+            .delete_entity(self.text_entity.unwrap())
+            .expect("Failed to Delete Entity");
         data.world
-            .delete_entity(self.exit_button_entity.as_ref().unwrap().image_entity);
+            .delete_entity(self.exit_button_entity.as_ref().unwrap().text_entity)
+            .expect("Failed to Delete Entity");
+        data.world
+            .delete_entity(self.exit_button_entity.as_ref().unwrap().image_entity)
+            .expect("Failed to Delete Entity");
     }
 }
